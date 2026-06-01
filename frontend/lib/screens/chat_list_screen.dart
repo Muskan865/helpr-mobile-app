@@ -79,8 +79,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         : int.tryParse(jobIdRaw?.toString() ?? '');
 
                     final String title = widget.isRequester
-                        ? "${job['worker_name'] ?? 'Worker'} (${job['service_type'] ?? 'Job'})"
-                        : "${job['client_name'] ?? 'Client'} (${job['service_type'] ?? 'Job'})";
+                        ? "${job['worker_name'] ?? 'Worker'}"
+                        : "${job['client_name'] ?? 'Client'}";
 
                     return ListTile(
                       leading: CircleAvatar(

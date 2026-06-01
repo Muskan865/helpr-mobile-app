@@ -429,7 +429,7 @@ class _RequesterDashboardState extends State<RequesterDashboard> {
 
               const SizedBox(height: 10),
 
-              // Show up to 3 active jobs inline
+              // Show active jobs inline
               if (activeJobs.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -440,72 +440,9 @@ class _RequesterDashboardState extends State<RequesterDashboard> {
                   ),
                 )
               else
-                ...activeJobs.take(3).map(
+                ...activeJobs.map(
                       (job) => _activeJobCard(context, job),
                     ),
-
-              const SizedBox(height: 12),
-
-              // All Active Jobs Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RequesterActiveJobsScreen(
-                            requesterId: requesterId),
-                      ),
-                    ).then((_) => _fetchData());
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[200],
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(
-                    "All Active Jobs",
-                    style:
-                        GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // History Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RequesterJobHistoryScreen(
-                            requesterId: requesterId),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[200],
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(
-                    "Job History",
-                    style:
-                        GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 6),
             ],
           ),

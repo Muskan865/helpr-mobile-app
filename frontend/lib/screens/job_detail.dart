@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'chat_screen.dart';
 import '/widgets/appbar.dart';
 
 class JobDetailsScreen extends StatefulWidget {
@@ -49,10 +50,11 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       appBar: const CustomAppBar(),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔹 Job Info Card
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 🔹 Job Info Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -99,10 +101,39 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
 
                   Row(
                     children: [
-                      const Icon(Icons.attach_money, size: 16),
-                      const SizedBox(width: 6),
-                      Text("${widget.job['bid_amount'] ?? "-"}"),
+                      // const Icon(Icons.attach_money, size: 16),
+                      // const SizedBox(width: 6),
+                      Text("Rs. ${widget.job['bid_amount'] ?? "-"}"),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final jobId = widget.job['id'] is int
+                            ? widget.job['id']
+                            : int.tryParse(widget.job['id']?.toString() ?? '');
+                        if (jobId != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(
+                                jobId: jobId,
+                                currentUserId: widget.workerId,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: const Text("Chat with Client"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade50,
+                        foregroundColor: Colors.blue,
+                        elevation: 0,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -118,7 +149,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
 
             buildTimeline(),
 
-            const Spacer(),
+            const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,
@@ -138,7 +169,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           ],
         ),
       ),
-    );
+    ),);
   }
 
   Widget buildTimeline() {

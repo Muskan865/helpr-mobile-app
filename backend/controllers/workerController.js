@@ -79,7 +79,14 @@ exports.getWorkerBids = async (req, res) => {
           r.location
         FROM bid b
         JOIN service_request r ON b.request_id = r.id
-        WHERE b.worker_id = @workerUserId OR b.worker_id = @workerTableId
+        WHERE (b.worker_id = @workerUserId OR b.worker_id = @workerTableId)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM job j
+            WHERE j.request_id = b.request_id
+              AND j.worker_id = b.worker_id
+              AND LOWER(j.status) = 'completed'
+          )
         ORDER BY b.id DESC
       `);
 

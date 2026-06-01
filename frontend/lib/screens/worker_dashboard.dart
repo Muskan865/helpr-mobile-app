@@ -1,10 +1,15 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'browse_requests_screen.dart';
 import 'browse_bids.dart';
+import 'chat_list_screen.dart';
 import 'job_history.dart';
 import 'job_detail.dart';
+import 'worker_ratings_screen.dart';
 import '/widgets/appbar.dart';
 
 class WorkerDashboard extends StatefulWidget {
@@ -43,8 +48,18 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     try {
       profile = await ApiService.getWorkerProfile(workerId);
       final jobs = await ApiService.getWorkerJobs(workerId);
-      ongoingJobs = jobs.where((job) => (job['status'] ?? '').toString().toLowerCase() != "completed").toList();
-      pastJobs = jobs.where((job) => (job['status'] ?? '').toString().toLowerCase() == "completed").toList();
+      ongoingJobs = jobs
+          .where(
+            (job) =>
+                (job['status'] ?? '').toString().toLowerCase() != "completed",
+          )
+          .toList();
+      pastJobs = jobs
+          .where(
+            (job) =>
+                (job['status'] ?? '').toString().toLowerCase() == "completed",
+          )
+          .toList();
       bids = await ApiService.getWorkerBids(workerId);
       serviceRequests = await ApiService.getMatchingRequests(workerId);
     } catch (e) {
@@ -64,24 +79,98 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
 
     if (error != null) {
       return Scaffold(
-        appBar: CustomAppBar(
-          workerId: workerId,
-          userId: workerId,
-          isRequester: false,
-          profile: profile,
+        drawer: _buildDrawer(
+          context,
+          profile?['full_name']?.toString() ?? "Worker",
+          (profile?['full_name']?.toString() ?? "")
+              .split(" ")
+              .take(2)
+              .map((w) => w.isNotEmpty ? w[0] : "")
+              .join()
+              .toUpperCase(),
+          null,
         ),
+        // appBar: CustomAppBar(
+        //   workerId: workerId,
+        //   userId: workerId,
+        //   isRequester: false,
+        //   profile: profile,
+        // ),
         body: Center(child: Text(error!)),
       );
     }
 
     final workerName = profile?['full_name']?.toString() ?? "Worker";
+    final initials = workerName
+        .split(" ")
+        .take(2)
+        .map((w) => w.isNotEmpty ? w[0] : "")
+        .join()
+        .toUpperCase();
+    final String? pictureBase64 = profile?['profile_picture'];
+    Uint8List? imageBytes;
+    if (pictureBase64 != null && pictureBase64.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(pictureBase64);
+      } catch (_) {
+        imageBytes = null;
+      }
+    }
 
     return Scaffold(
-      appBar: CustomAppBar(
-        workerId: workerId,
-        userId: workerId,
-        isRequester: false,
-        profile: profile,
+      drawer: _buildDrawer(context, workerName, initials, imageBytes),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E3A8A), // Blue theme
+        elevation: 0.5,
+        shadowColor: Colors.blue.shade200,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        title: Text(
+          "Helpr",
+          style: GoogleFonts.nunito(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chat_bubble_outline,
+                    color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatListScreen(
+                        userId: workerId,
+                        isRequester: false,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              Positioned(
+                right: 10,
+                top: 10,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                      color: Colors.amber, shape: BoxShape.circle),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: fetchData,
@@ -93,12 +182,18 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
             children: [
               Text(
                 "Good to see you,",
-                style: GoogleFonts.nunito(color: Colors.grey.shade600, fontSize: 14),
+                style: GoogleFonts.nunito(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 workerName,
-                style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 24),
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                ),
               ),
               const SizedBox(height: 16),
               _summaryRow(),
@@ -147,21 +242,9 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               if (ongoingJobs.isEmpty)
                 _emptyState("No active jobs right now")
               else
-                ...ongoingJobs.take(3).map((job) => _jobCard(job)),
+                ...ongoingJobs.map((job) => _jobCard(job)),
               const SizedBox(height: 12),
-              _actionButton(
-                context,
-                label: "Job History",
-                icon: Icons.history_rounded,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BrowsePastJobs(pastJobs: pastJobs),
-                    ),
-                  );
-                },
-              ),
+  
             ],
           ),
         ),
@@ -183,7 +266,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
         Expanded(
           child: _summaryCard(
             label: "Pending Bids",
-            value: "${bids.where((b) => (b['bid_status'] ?? '') == 'pending').length}",
+            value:
+                "${bids.where((b) => (b['bid_status'] ?? '') == 'pending').length}",
             icon: Icons.pending_actions_rounded,
           ),
         ),
@@ -216,8 +300,20 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
         children: [
           Icon(icon, color: Colors.blue.shade700, size: 18),
           const SizedBox(height: 8),
-          Text(value, style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 20)),
-          Text(label, style: GoogleFonts.nunito(color: Colors.grey.shade600, fontSize: 12)),
+          Text(
+            value,
+            style: GoogleFonts.nunito(
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.nunito(
+              color: Colors.grey.shade600,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
@@ -234,7 +330,10 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       child: ElevatedButton.icon(
         onPressed: onTap,
         icon: Icon(icon, size: 18),
-        label: Text(label, style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+        label: Text(
+          label,
+          style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black87,
@@ -243,6 +342,180 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           minimumSize: const Size.fromHeight(50),
         ),
       ),
+    );
+  }
+
+  Widget _buildDrawer(
+    BuildContext context,
+    String name,
+    String initials,
+    Uint8List? imageBytes,
+  ) {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              color: const Color(0xFF1E3A8A),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.blue.shade100,
+                    backgroundImage: imageBytes != null
+                        ? MemoryImage(imageBytes)
+                        : null,
+                    child: imageBytes == null
+                        ? Text(
+                            initials,
+                            style: GoogleFonts.nunito(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.nunito(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        "Worker",
+                        style: GoogleFonts.nunito(
+                          color: Colors.blue.shade100,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            _drawerItem(
+              Icons.person_2_outlined,
+              "Profile",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(
+                  context,
+                  '/workerProfile',
+                  arguments: {'userId': workerId},
+                );
+              },
+            ),
+            _drawerItem(
+              Icons.star_outline,
+              "My Ratings",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => WorkerRatingsScreen(
+                      workerId: workerId,
+                      avgRating: (profile?['avg_rating'] ?? 0).toDouble(),
+                      workerName: name,
+                    ),
+                  ),
+                );
+              },
+            ),
+            _drawerItem(
+              Icons.search_rounded,
+              "Browse Requests",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BrowseRequestsScreen(
+                      workerId: workerId,
+                      serviceRequests: serviceRequests,
+                    ),
+                  ),
+                ).then((_) => fetchData());
+              },
+            ),
+            _drawerItem(
+              Icons.gavel_rounded,
+              "My Bids",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BrowseBidsScreen(bids: bids),
+                  ),
+                ).then((_) => fetchData());
+              },
+            ),
+            _drawerItem(
+              Icons.history,
+              "Job History",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BrowsePastJobs(pastJobs: pastJobs),
+                  ),
+                );
+              },
+            ),
+            const Spacer(),
+            const Divider(height: 1),
+            _drawerItem(
+              Icons.logout,
+              "Logout",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _drawerItem(
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      leading: Stack(
+        clipBehavior: Clip.none,
+        children: [Icon(icon, color: Colors.grey.shade700)],
+      ),
+      title: Text(
+        label,
+        style: GoogleFonts.nunito(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+      onTap: onTap ?? () {},
     );
   }
 
@@ -259,7 +532,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => JobDetailsScreen(job: job, workerId: workerId),
+            builder: (context) =>
+                JobDetailsScreen(job: job, workerId: workerId),
           ),
         ).then((_) => fetchData());
       },
@@ -281,7 +555,11 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.handyman_outlined, color: Colors.blue.shade700, size: 20),
+              child: Icon(
+                Icons.handyman_outlined,
+                color: Colors.blue.shade700,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -290,12 +568,18 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                 children: [
                   Text(
                     job['service_type'] ?? "",
-                    style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     "${job['client_name'] ?? 'Client'} • $dueDate",
-                    style: GoogleFonts.nunito(color: Colors.grey.shade600, fontSize: 13),
+                    style: GoogleFonts.nunito(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),

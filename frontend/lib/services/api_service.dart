@@ -20,7 +20,7 @@ class ApiService {
     if (kIsWeb) return "http://localhost:3000";
     if (defaultTargetPlatform == TargetPlatform.android) {
       // Android emulator -> host machine localhost
-      return "http://10.20.4.122:3000";
+      return "http://192.168.1.21:3000";
     }
     return "http://localhost:3000";
   }
@@ -117,6 +117,7 @@ class ApiService {
   static Future<Map<String, dynamic>> signup(
     String name,
     String contactNumber,
+    String email,
     String password,
     String role,
   ) async {
@@ -126,6 +127,7 @@ class ApiService {
       body: jsonEncode({
         "full_name": name,
         "contact_number": contactNumber,
+        "email": email,
         "password": password,
         "role": role,
       }),
@@ -136,6 +138,50 @@ class ApiService {
     } else {
       throw ApiException(
         _messageFromResponse(response, "Unable to sign up right now."),
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> requestPasswordReset(
+    String email,
+  ) async {
+    final response = await http.post(
+      Uri.parse("$apiBase/auth/request-password-reset"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": email,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw ApiException(
+        _messageFromResponse(response, "Unable to request OTP right now."),
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> confirmPasswordReset(
+    String email,
+    String otpCode,
+    String newPassword,
+  ) async {
+    final response = await http.post(
+      Uri.parse("$apiBase/auth/confirm-password-reset"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": email,
+        "otp_code": otpCode,
+        "password": newPassword,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw ApiException(
+        _messageFromResponse(response, "Unable to reset password right now."),
       );
     }
   }
