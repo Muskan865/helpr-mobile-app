@@ -9,6 +9,13 @@ const profileCompletionRoutes = require('./routes/profileCompletionRoutes');
 
 const app = express();
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Helpr API is running'
+  });
+});
+
 // Logger middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin}`);
