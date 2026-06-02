@@ -15,15 +15,7 @@ class ApiException implements Exception {
 class ApiService {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static String get baseUrl {
-    if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
-    if (kIsWeb) return "http://localhost:3000";
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      // Android emulator -> host machine localhost
-      return "http://192.168.1.21:3000";
-    }
-    return "http://localhost:3000";
-  }
+  static const String baseUrl = "https://your-app-name.onrender.com";
 
   static String get apiBase => "$baseUrl/api";
 
