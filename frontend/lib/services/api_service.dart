@@ -142,6 +142,22 @@ class ApiService {
     }
   }
 
+  static Future<bool> checkEmailExists(String email) async {
+    final response = await http.post(
+      Uri.parse("$apiBase/auth/check-email"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)["exists"] == true;
+    } else {
+      throw ApiException(
+        _messageFromResponse(response, "Unable to verify email right now."),
+      );
+    }
+  }
+
   static Future<Map<String, dynamic>> requestPasswordReset(
     String email,
   ) async {

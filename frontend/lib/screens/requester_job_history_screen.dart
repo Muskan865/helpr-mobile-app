@@ -311,19 +311,6 @@ class _RequesterJobHistoryScreenState
               ),
             ),
           ],
-
-          const SizedBox(height: 6),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                "View Details ",
-                style:
-                    TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 11),
-            ],
-          ),
         ],
       ),
     );

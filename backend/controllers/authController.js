@@ -1,4 +1,5 @@
 const { poolPromise } = require('../config/db');
+const dns = require('dns').promises;
 const bcrypt = require('bcrypt');
 const emailService = require('../services/emailService');
 
@@ -6,6 +7,20 @@ const emailService = require('../services/emailService');
 exports.signup = async (req, res) => {
   try {
     const { full_name, contact_number, email, password, role } = req.body;
+
+    // Basic email domain validation (ensure domain can receive mail)
+    if (email) {
+      try {
+        const domain = email.split('@').pop();
+        const mx = await dns.resolveMx(domain);
+        if (!mx || mx.length === 0) {
+          // fallback to A record lookup
+          await dns.resolve4(domain);
+        }
+      } catch (err) {
+        return res.status(400).json({ message: 'Email domain cannot receive mail or is invalid' });
+      }
+    }
 
     const pool = await poolPromise;
 
@@ -22,7 +37,8 @@ exports.signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result = await pool.request()
+    // Step 1: insert the new user
+    await pool.request()
       .input('full_name', full_name)
       .input('contact_number', contact_number)
       .input('email', email)
@@ -30,14 +46,16 @@ exports.signup = async (req, res) => {
       .input('role', role)
       .query(`
         INSERT INTO users (full_name, contact_number, email, password, role, profile_picture, avg_rating)
-        VALUES (@full_name, @contact_number, @email, @password, @role, 0x, 0.0);
-
-        SELECT SCOPE_IDENTITY() AS id;
+        VALUES (@full_name, @contact_number, @email, @password, @role, '', 0.0)
       `);
+
+    // Step 2: get the new row's id (MySQL equivalent of SCOPE_IDENTITY)
+    const idResult = await pool.request()
+      .query(`SELECT LAST_INSERT_ID() AS id`);
 
     return res.json({
       message: "User created successfully",
-      userId: result.recordset[0].id,
+      userId: idResult.recordset[0].id,
       role: role
     });
 
@@ -49,9 +67,29 @@ exports.signup = async (req, res) => {
   }
 };
 
-const generateOtp = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+exports.checkEmailExists = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('email', email)
+      .query(`SELECT id FROM users WHERE email = @email`);
+
+    const exists = result.recordset.length > 0;
+    return res.json({ exists });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Email check failed",
+      error: "Something went wrong. Please try again."
+    });
+  }
 };
+
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // REQUEST PASSWORD RESET OTP
 exports.requestPasswordReset = async (req, res) => {
@@ -59,9 +97,7 @@ exports.requestPasswordReset = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({
-        message: "Email is required"
-      });
+      return res.status(400).json({ message: "Email is required" });
     }
 
     const pool = await poolPromise;
@@ -71,9 +107,7 @@ exports.requestPasswordReset = async (req, res) => {
 
     const user = result.recordset[0];
     if (!user) {
-      return res.status(400).json({
-        message: "User does not exist"
-      });
+      return res.status(400).json({ message: "User does not exist" });
     }
 
     const otp = generateOtp();
@@ -94,9 +128,7 @@ exports.requestPasswordReset = async (req, res) => {
     const message = `Your Helpr password reset code is ${otp}. It expires in 10 minutes.`;
     if (emailService.isConfigured) {
       await emailService.sendEmail(email, 'Helpr password reset code', message);
-      return res.json({
-        message: "OTP sent via email. Use it to reset your password.",
-      });
+      return res.json({ message: "OTP sent via email. Use it to reset your password." });
     }
 
     return res.json({
@@ -117,9 +149,7 @@ exports.confirmPasswordReset = async (req, res) => {
     const { email, otp_code, password } = req.body;
 
     if (!email || !otp_code || !password) {
-      return res.status(400).json({
-        message: "Email, OTP code and new password are required"
-      });
+      return res.status(400).json({ message: "Email, OTP code and new password are required" });
     }
 
     const pool = await poolPromise;
@@ -130,22 +160,16 @@ exports.confirmPasswordReset = async (req, res) => {
 
     const user = result.recordset[0];
     if (!user) {
-      return res.status(400).json({
-        message: "Invalid OTP code or email"
-      });
+      return res.status(400).json({ message: "Invalid OTP code or email" });
     }
 
     if (user.password_reset_used) {
-      return res.status(400).json({
-        message: "This OTP has already been used. Request a new one."
-      });
+      return res.status(400).json({ message: "This OTP has already been used. Request a new one." });
     }
 
     const expiresAt = new Date(user.password_reset_expires_at);
     if (expiresAt < new Date()) {
-      return res.status(400).json({
-        message: "OTP has expired. Please request a new one."
-      });
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -159,9 +183,7 @@ exports.confirmPasswordReset = async (req, res) => {
         WHERE email = @email
       `);
 
-    return res.json({
-      message: "Password reset successful. Please log in with your new password."
-    });
+    return res.json({ message: "Password reset successful. Please log in with your new password." });
   } catch (err) {
     return res.status(500).json({
       message: "Password reset failed",
@@ -184,28 +206,21 @@ exports.login = async (req, res) => {
     const user = result.recordset[0];
 
     if (!user) {
-      return res.status(400).json({
-        message: "User does not exist"
-      });
+      return res.status(400).json({ message: "User does not exist" });
     }
 
-    // Works with both hashed and plain text passwords
     let isMatch = false;
     if (user.password && user.password.startsWith("$2b$")) {
-      // Hashed password — use bcrypt
       isMatch = await bcrypt.compare(password, user.password);
     } else {
-      // Plain text password — direct compare
       isMatch = (password === user.password);
     }
 
     if (!isMatch) {
-      return res.status(400).json({
-        message: "Incorrect password"
-      });
+      return res.status(400).json({ message: "Incorrect password" });
     }
 
-    // ✅ If plain text, upgrade to hashed for next time
+    // Upgrade plain text password to hashed on next login
     if (user.password && !user.password.startsWith("$2b$")) {
       const hashedPassword = await bcrypt.hash(password, 10);
       await pool.request()
@@ -217,16 +232,13 @@ exports.login = async (req, res) => {
     res.json({
       message: "Login successful",
       user: {
-        id: user.id,
+        id:   user.id,
         name: user.full_name,
         role: user.role
       }
     });
 
   } catch (err) {
-    res.status(500).json({
-      message: "Login failed",
-      error: "Server error"
-    });
+    res.status(500).json({ message: "Login failed", error: "Server error" });
   }
 };

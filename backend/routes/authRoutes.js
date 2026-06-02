@@ -5,10 +5,12 @@ const {
   signup,
   login,
   requestPasswordReset,
-  confirmPasswordReset
+  confirmPasswordReset,
+  checkEmailExists
 } = require('../controllers/authController');
 
 router.post('/signup', signup);
+router.post('/check-email', checkEmailExists);
 router.post('/login', login);
 router.post('/request-password-reset', requestPasswordReset);
 router.post('/confirm-password-reset', confirmPasswordReset);

@@ -41,7 +41,7 @@ class _BrowsePastJobsState extends State<BrowsePastJobs> {
                   job['service_type'] ?? "",
                   job['description'] ?? "",
                   "${job['location'] ?? "-"}",
-                  "${job['date'] ?? "-"}",
+                  _formatDate(job['date']),
                 ),
               ),
           ],
@@ -50,6 +50,22 @@ class _BrowsePastJobsState extends State<BrowsePastJobs> {
     );
   }
   
+  String _formatDate(dynamic rawDate) {
+    if (rawDate == null) return "-";
+    final dateString = rawDate.toString();
+
+    try {
+      final date = DateTime.parse(dateString);
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      return '${monthNames[date.month - 1]} ${date.day}, ${date.year}';
+    } catch (_) {
+      return dateString;
+    }
+  }
+
   Widget requestCard(
      String title,
      String description,

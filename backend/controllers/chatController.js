@@ -1,4 +1,6 @@
-const { sql, poolPromise } = require("../config/db");
+
+
+const { poolPromise } = require('../config/db');
 
 exports.getMessages = async (req, res) => {
   try {
@@ -6,7 +8,7 @@ exports.getMessages = async (req, res) => {
     const pool = await poolPromise;
 
     const result = await pool.request()
-      .input("jobId", sql.Int, jobId)
+      .input('jobId', jobId)
       .query(`
         SELECT id, job_id, sender_id, content, sent_at
         FROM message
@@ -17,7 +19,7 @@ exports.getMessages = async (req, res) => {
     res.json(result.recordset);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching messages");
+    res.status(500).send('Error fetching messages');
   }
 };
 
@@ -27,17 +29,17 @@ exports.sendMessage = async (req, res) => {
     const pool = await poolPromise;
 
     await pool.request()
-      .input("jobId", sql.Int, jobId)
-      .input("senderId", sql.Int, senderId)
-      .input("content", sql.VarChar, content)
+      .input('jobId', jobId)
+      .input('senderId', senderId)
+      .input('content', content)
       .query(`
         INSERT INTO message (job_id, sender_id, content, sent_at)
-        VALUES (@jobId, @senderId, @content, GETDATE())
+        VALUES (@jobId, @senderId, @content, NOW())
       `);
 
-    res.json({ success: true, message: "Message sent" });
+    res.json({ success: true, message: 'Message sent' });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error sending message");
+    res.status(500).send('Error sending message');
   }
 };

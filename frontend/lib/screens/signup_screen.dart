@@ -29,6 +29,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  Future<bool> _isEmailTaken(String email) async {
+    return await ApiService.checkEmailExists(email);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,6 +183,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         const SnackBar(
                           content: Text(
                             "Password must be at least 6 characters",
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    bool emailTaken;
+                    try {
+                      emailTaken = await _isEmailTaken(email);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(ApiService.errorMessage(e))),
+                      );
+                      return;
+                    }
+
+                    if (emailTaken) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "This email is already registered. Please login or use another email.",
                           ),
                         ),
                       );
