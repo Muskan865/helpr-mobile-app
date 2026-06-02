@@ -15,7 +15,7 @@ class ApiException implements Exception {
 class ApiService {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static const String baseUrl = "https://your-app-name.onrender.com";
+  static const String baseUrl = "https://helpr-mobile-app.onrender.com";
 
   static String get apiBase => "$baseUrl/api";
 
