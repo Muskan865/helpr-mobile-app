@@ -1,4 +1,4 @@
-package com.example.helpr
+package pk.helpr.app
 
 import io.flutter.embedding.android.FlutterActivity
 
